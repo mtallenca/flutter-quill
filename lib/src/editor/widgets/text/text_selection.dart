@@ -346,7 +346,7 @@ class EditorTextSelectionOverlay {
       _handles![1].remove();
       _handles = null;
     }
-    hideMagnifier();
+    hideMagnifier(okToRestoreToolbar: false);
     if (toolbar != null) {
       hideToolbar();
     }
@@ -461,14 +461,16 @@ class EditorTextSelectionOverlay {
     _magnifierInfo.value = magnifierInfo;
   }
 
-  void hideMagnifier() {
+  void hideMagnifier({bool okToRestoreToolbar = true}) {
     if (_magnifierController.overlayEntry == null) {
       return;
     }
     _magnifierController.hide();
     if (_restoreToolbar) {
       _restoreToolbar = false;
-      showToolbar();
+      if (okToRestoreToolbar) {
+        showToolbar();
+      }
     }
   }
 
