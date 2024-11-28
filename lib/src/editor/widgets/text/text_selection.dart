@@ -346,6 +346,7 @@ class EditorTextSelectionOverlay {
       _handles![1].remove();
       _handles = null;
     }
+    hideMagnifier();
     if (toolbar != null) {
       hideToolbar();
     }
