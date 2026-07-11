@@ -242,4 +242,32 @@ void main() {
       );
     },
   );
+  group('selection endpoint crash when getBoxesForSelection is empty', () {
+    testWidgets(
+      'getEndpointsForSelection falls back to the caret offset when a '
+      'selection edge produces no glyph boxes',
+      (tester) async {
+        final controller = QuillController.basic()
+          ..document.insert(0, '\u{1F44D} thumbs up');
+        addTearDown(controller.dispose);
+
+        await tester.pumpWidget(
+          QuillTestApp.withScaffold(QuillEditor.basic(controller: controller)),
+        );
+        await tester.pumpAndSettle();
+
+        final renderEditor = tester.allRenderObjects
+            .whereType<RenderEditor>()
+            .first;
+
+        // A selection edge inside the emoji's surrogate pair yields no glyph
+        // boxes from getBoxesForSelection; this used to crash on boxes.last
+        // (release) or fail an assert (debug) while painting the selection.
+        final endpoints = renderEditor.getEndpointsForSelection(
+          const TextSelection(baseOffset: 0, extentOffset: 1),
+        );
+        expect(endpoints, hasLength(2));
+      },
+    );
+  });
 }
