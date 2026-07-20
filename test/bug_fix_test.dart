@@ -270,4 +270,36 @@ void main() {
       },
     );
   });
+  group('line boundary crash when a line has no glyph boxes', () {
+    testWidgets(
+      'getLineAtOffset falls back to the caret offset on an empty line '
+      'instead of crashing on lineBoxes.first/last',
+      (tester) async {
+        // An empty first paragraph: the caret at offset 0 sits on a line whose
+        // [0, line.length - 1] == [0, 0] box selection is collapsed and yields
+        // no glyph boxes.
+        final controller = QuillController.basic()
+          ..document.insert(0, '\nsecond line');
+        addTearDown(controller.dispose);
+
+        await tester.pumpWidget(
+          QuillTestApp.withScaffold(QuillEditor.basic(controller: controller)),
+        );
+        await tester.pumpAndSettle();
+
+        final renderEditor = tester.allRenderObjects
+            .whereType<RenderEditor>()
+            .first;
+
+        // Line-boundary navigation (Home/End/Shift+Home on a hardware
+        // keyboard) resolves the line at the caret; on the empty line this
+        // used to throw 'Bad state: No element' from lineBoxes.first.
+        final line = renderEditor.getLineAtOffset(
+          const TextPosition(offset: 0),
+        );
+        expect(line.baseOffset, 0);
+        expect(line.extentOffset, 0);
+      },
+    );
+  });
 }
