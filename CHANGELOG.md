@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a crash (assert in debug, fatal `RangeError` in release) when painting selection endpoints for a selection edge that produces no glyph boxes, e.g. an offset inside an emoji grapheme cluster [#2751](https://github.com/singerdmx/flutter-quill/pull/2751).
 - Fixed a fatal `Bad state: No element` crash in `getLineBoundary` when resolving the line boundary of an empty line (e.g. line-boundary navigation with Home/End/Shift+Home on a hardware keyboard), which produced no glyph boxes; falls back to the caret position [#2751](https://github.com/singerdmx/flutter-quill/pull/2751).
+- Fixed a `Null check operator used on a null value` crash in `_TextLineState._tapNodeLink`/`_longPressLink` when a cached link gesture recognizer fires after the document mutates: the captured node can be detached or have lost its `link` attribute by the time the tap is swept by the gesture arena (`_linkRecognizers` is not cleared when the line content changes), so the link attribute is now read defensively instead of force-unwrapped.
 
 ## [11.6.0] - 2026-09-16
 
