@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed a `Null check operator used on a null value` crash in `_TextLineState._tapNodeLink`/`_longPressLink` when a cached link gesture recognizer fires after the document mutates: the captured node can be detached or have lost its `link` attribute by the time the tap is swept by the gesture arena, so the link attribute is now read defensively instead of force-unwrapped.
+- Fixed an `Invalid argument(s): string is not well-formed UTF-16` crash in `addText` while laying out a line: `_TextLineState._splitAndApplyComposingStyle` cut the node text at the composing offsets without checking that they land on a code-point boundary, so a composing range carried over from an older document state could split a surrogate pair (an emoji) in half. The composing decoration is now skipped when the range is out of range or would split a pair.
 
 ## [11.5.1] - 2026-05-20
 
