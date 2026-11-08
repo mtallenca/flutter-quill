@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_test/flutter_quill_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -352,40 +353,44 @@ void main() {
   });
 
   group('Mouse drag-select leaves the magnifier up on iOS/Android', () {
-    testWidgets('no magnifier during or after a mouse drag', (tester) async {
-      final controller = QuillController(
-        document: Document()..insert(0, 'Mouse drag selection'),
-        selection: const TextSelection.collapsed(offset: 0),
-      );
-      await tester.pumpWidget(
-        QuillTestApp.withScaffold(
-          QuillEditor.basic(
-            controller: controller,
-            config: const QuillEditorConfig(
-              quillMagnifierBuilder: defaultQuillMagnifierBuilder,
+    testWidgets(
+      'no magnifier during or after a mouse drag',
+      (tester) async {
+        final controller = QuillController(
+          document: Document()..insert(0, 'Mouse drag selection'),
+          selection: const TextSelection.collapsed(offset: 0),
+        );
+        await tester.pumpWidget(
+          QuillTestApp.withScaffold(
+            QuillEditor.basic(
+              controller: controller,
+              config: const QuillEditorConfig(
+                quillMagnifierBuilder: defaultQuillMagnifierBuilder,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      final start =
-          tester.getTopLeft(find.byType(QuillEditor)) + const Offset(10, 10);
-      final gesture = await tester.startGesture(
-        start,
-        kind: PointerDeviceKind.mouse,
-        buttons: kPrimaryMouseButton,
-      );
-      await tester.pump();
-      await gesture.moveTo(start + const Offset(40, 0));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump();
-      expect(find.byType(QuillMagnifier), findsNothing);
+        final start =
+            tester.getTopLeft(find.byType(QuillEditor)) + const Offset(10, 10);
+        final gesture = await tester.startGesture(
+          start,
+          kind: PointerDeviceKind.mouse,
+          buttons: kPrimaryMouseButton,
+        );
+        await tester.pump();
+        await gesture.moveTo(start + const Offset(40, 0));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump();
+        expect(find.byType(QuillMagnifier), findsNothing);
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-      expect(find.byType(QuillMagnifier), findsNothing);
-      expect(controller.selection.isCollapsed, isFalse);
-    }, variant: TargetPlatformVariant.mobile());
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(find.byType(QuillMagnifier), findsNothing);
+        expect(controller.selection.isCollapsed, isFalse);
+      },
+      variant: TargetPlatformVariant.mobile(),
+    );
   });
   group('Mouse drag-select past the bottom of the viewport', () {
     testWidgets('scrolls down to follow the pointer', (tester) async {
@@ -577,5 +582,52 @@ void main() {
           .toList();
       expect(numbers, ['1.', '2.', '3.', '1.']);
     });
+  });
+
+  group('Floating cursor reset animation after dispose', () {
+    testWidgets(
+      'disposing the editor mid-animation stops the reset animation',
+      (tester) async {
+        final controller = QuillController(
+          document: Document()..insert(0, 'Hello world\nSecond line'),
+          selection: const TextSelection.collapsed(offset: 3),
+        );
+        addTearDown(controller.dispose);
+
+        await tester.pumpWidget(
+          QuillTestApp.withScaffold(QuillEditor.basic(controller: controller)),
+        );
+
+        final state = tester.state<QuillRawEditorState>(
+          find.byType(QuillRawEditor),
+        );
+        // A space-bar cursor drag, as iOS sends it.
+        state
+          ..updateFloatingCursor(
+            RawFloatingCursorPoint(
+              offset: Offset.zero,
+              state: FloatingCursorDragState.Start,
+            ),
+          )
+          ..updateFloatingCursor(
+            RawFloatingCursorPoint(
+              offset: const Offset(20, 0),
+              state: FloatingCursorDragState.Update,
+            ),
+          )
+          ..updateFloatingCursor(
+            RawFloatingCursorPoint(state: FloatingCursorDragState.End),
+          );
+        expect(state.floatingCursorResetController.isAnimating, isTrue);
+
+        // Remove the editor before the reset animation finishes.
+        await tester.pump(const Duration(milliseconds: 10));
+        await tester.pumpWidget(QuillTestApp.home(const SizedBox()));
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }
